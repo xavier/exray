@@ -1,0 +1,2 @@
+defmodule Exray do
+end
