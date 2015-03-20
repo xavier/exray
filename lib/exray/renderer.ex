@@ -147,8 +147,8 @@ defmodule Exray.Renderer do
   # Calculate
   def apply_reflection(color, %{reflections: false}, _, _, _, _, _), do: color
   def apply_reflection(color, %{reflections: true}, _, _, _, _, 0), do: color
-  def apply_reflection(color, %{reflections: true}, _, %{:material => %{reflection: 0}}, _, _), do: color
-  def apply_reflection(color, %{reflections: true} = scene, ray, hit_model, hit_point, normal_at_hit_point, recursion_level) do
+  def apply_reflection(color, %{reflections: true}, _, %{:material => %{reflection: 0.0}}, _, _, _), do: color
+  def apply_reflection(color, %{reflections: true} = scene, ray, %{:material => %{reflection: reflection}}, hit_point, normal_at_hit_point, recursion_level) do
     rho = 2 * Vec3.dot(normal_at_hit_point, ray.direction)
     reflected_ray_direction = Vec3.sub(ray.direction, Vec3.scale(normal_at_hit_point, rho))
     reflected_ray = %Ray{
@@ -156,7 +156,7 @@ defmodule Exray.Renderer do
       direction: reflected_ray_direction
     }
     reflected_color = trace_ray(scene, reflected_ray, recursion_level - 1)
-    Color.mix(color, reflected_color, hit_model.material.reflection)
+    Color.mix(color, reflected_color, reflection)
   end
 
 
