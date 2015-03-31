@@ -47,6 +47,18 @@ defmodule Exray.Renderer do
     # Pid which will receive the results of the calculations
     scene_renderer = self()
 
+    num_workers = :erlang.system_info(:logical_processors) - 1
+
+    workers = 0..num_workers |> Enum.into(%{}, fn (n) -> {n, spawn(fn -> render_lines(scene_renderer) end)} end)
+    # workers = %{
+    #   0 => ,
+    #   1 => spawn(fn -> render_lines(scene_renderer) end),
+    #   2 => spawn(fn -> render_lines(scene_renderer) end),
+    #   #3 => spawn(fn -> render_lines(scene_renderer) end),
+    # }
+
+    num_workers = Enum.count(workers)
+
     for y <- 0..(viewport.height-1) do
 
       # Precalculate line-specific invariants
@@ -54,10 +66,16 @@ defmodule Exray.Renderer do
       transpose_y = Vec3.scale(vm_v, yt) |> Vec3.add(scene.camera.position)
 
       # Spawn a process to render this line
-      spawn fn ->
-        rendered_line = render_line(scene, mx, transpose_y, viewport.width, ray, vm_u)
-        send scene_renderer, {y, rendered_line}
-      end
+      # spawn fn ->
+      #   rendered_line = timed_render_line(scene, mx, transpose_y, viewport.width, ray, vm_u)
+      #   send scene_renderer, {y, rendered_line}
+      # end
+      worker = Dict.get(workers, rem(y, num_workers))
+      send worker, {y, scene, mx, transpose_y, viewport.width, ray, vm_u}
+    end
+
+    for {_, worker_pid} <- workers do
+      send worker_pid, :stop
     end
 
     # Collect all rendered lines in order
@@ -67,6 +85,26 @@ defmodule Exray.Renderer do
       end
     end |> List.flatten
 
+  end
+
+  def render_lines(scene_renderer) do
+    receive do
+      {y, scene, mx, transpose_y, width, ray, vm_u} ->
+        rendered_line = timed_render_line(scene, mx, transpose_y, width, ray, vm_u)
+        send scene_renderer, {y, rendered_line}
+        render_lines(scene_renderer)
+      :stop ->
+    end
+  end
+
+
+
+  defp timed_render_line(scene, mx, transpose_y, width, ray, vm_u) do
+    {time_ns, output} = :timer.tc(fn ->
+      render_line(scene, mx, transpose_y, width, ray, vm_u)
+    end)
+    IO.puts "#{Float.round(time_ns / 1_000_000, 3)}"
+    output
   end
 
   defp render_line(scene, mx, transpose_y, width, ray, vm_u) do
