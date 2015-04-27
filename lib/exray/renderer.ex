@@ -68,12 +68,15 @@ defmodule Exray.Renderer do
           true,         # blocking
           :infinity     # timeout. :infinity is the standard timeout value for OTP.
                         # The default timeout in poolboy is 5 seconds, so we don't want
-                        # :poolboy to kill out long and beautifu queue of tasks
+                        # :poolboy to kill our long and beautiful queue of tasks
         )
 
-        {y, rendered_line} = Exray.LineRenderer.render_line(worker_pid, {y, scene, mx, transpose_y, viewport.width, ray, vm_u})
+        Exray.LineRenderer.render_line(
+          worker_pid,
+          {scene_renderer, y, scene, mx, transpose_y, viewport.width, ray, vm_u}
+        )
         :poolboy.checkin(pool, worker_pid)
-        send scene_renderer, {y, rendered_line}
+
       end)
     end
 
