@@ -13,7 +13,6 @@ defmodule Exray.LineRenderer do
 
     send(scene_renderer, {y, rendered_line})
 
-    # {:reply, {y, rendered_line}, state}
-    {:noreply, state}
+    {:reply, :ok, state}
   end
 end

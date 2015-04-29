@@ -71,7 +71,7 @@ defmodule Exray.Renderer do
                         # :poolboy to kill our long and beautiful queue of tasks
         )
 
-        Exray.LineRenderer.render_line(
+        :ok = Exray.LineRenderer.render_line(
           worker_pid,
           {scene_renderer, y, scene, mx, transpose_y, viewport.width, ray, vm_u}
         )
