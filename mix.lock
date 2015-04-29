@@ -1,1 +1,2 @@
-%{"ex_png": {:git, "https://github.com/xavier/ex_png", "09ad85fa3ab30e2353e85fac549ed75233a00ae8", []}}
+%{"ex_png": {:git, "git://github.com/xavier/ex_png.git", "09ad85fa3ab30e2353e85fac549ed75233a00ae8", []},
+  "poolboy": {:git, "git://github.com/devinus/poolboy.git", "42c631720e16cd9657585c125d1e1cf3acc82c59", []}}

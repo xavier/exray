@@ -25,6 +25,9 @@ defmodule Exray.Mixfile do
   #
   # Type `mix help deps` for more examples and options
   defp deps do
-    [{:ex_png, git: "https://github.com/xavier/ex_png"}]
+    [
+      {:ex_png,  github: "xavier/ex_png"},
+      {:poolboy, github: "devinus/poolboy"}
+    ]
   end
 end

@@ -49,33 +49,35 @@ defmodule Exray.Renderer do
 
     num_workers = :erlang.system_info(:logical_processors) - 1
 
-    workers = 0..num_workers |> Enum.into(%{}, fn (n) -> {n, spawn(fn -> render_lines(scene_renderer) end)} end)
-    # workers = %{
-    #   0 => ,
-    #   1 => spawn(fn -> render_lines(scene_renderer) end),
-    #   2 => spawn(fn -> render_lines(scene_renderer) end),
-    #   #3 => spawn(fn -> render_lines(scene_renderer) end),
-    # }
+    IO.inspect "concurrent workers: #{num_workers}"
 
-    num_workers = Enum.count(workers)
+    {:ok, pool} = :poolboy.start(
+      worker_module: Exray.LineRenderer,
+      size:          num_workers,
+      max_overflow:  0
+    )
 
     for y <- 0..(viewport.height-1) do
-
       # Precalculate line-specific invariants
       yt = y - my
       transpose_y = Vec3.scale(vm_v, yt) |> Vec3.add(scene.camera.position)
 
-      # Spawn a process to render this line
-      # spawn fn ->
-      #   rendered_line = timed_render_line(scene, mx, transpose_y, viewport.width, ray, vm_u)
-      #   send scene_renderer, {y, rendered_line}
-      # end
-      worker = Dict.get(workers, rem(y, num_workers))
-      send worker, {y, scene, mx, transpose_y, viewport.width, ray, vm_u}
-    end
+      spawn(fn ->
+        worker_pid = :poolboy.checkout(
+          pool,
+          true,         # blocking
+          :infinity     # timeout. :infinity is the standard timeout value for OTP.
+                        # The default timeout in poolboy is 5 seconds, so we don't want
+                        # :poolboy to kill our long and beautiful queue of tasks
+        )
 
-    for {_, worker_pid} <- workers do
-      send worker_pid, :stop
+        Exray.LineRenderer.render_line(
+          worker_pid,
+          {scene_renderer, y, scene, mx, transpose_y, viewport.width, ray, vm_u}
+        )
+        :poolboy.checkin(pool, worker_pid)
+
+      end)
     end
 
     # Collect all rendered lines in order
@@ -87,19 +89,8 @@ defmodule Exray.Renderer do
 
   end
 
-  def render_lines(scene_renderer) do
-    receive do
-      {y, scene, mx, transpose_y, width, ray, vm_u} ->
-        rendered_line = timed_render_line(scene, mx, transpose_y, width, ray, vm_u)
-        send scene_renderer, {y, rendered_line}
-        render_lines(scene_renderer)
-      :stop ->
-    end
-  end
 
-
-
-  defp timed_render_line(scene, mx, transpose_y, width, ray, vm_u) do
+  def timed_render_line(scene, mx, transpose_y, width, ray, vm_u) do
     {time_ns, output} = :timer.tc(fn ->
       render_line(scene, mx, transpose_y, width, ray, vm_u)
     end)
